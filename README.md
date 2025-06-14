@@ -38,7 +38,7 @@ OnnxOCR-UI 是基于 [OnnxOCR](https://github.com/jingsongliujing/OnnxOCR) 的�
 
 安装依赖：
 ```
-pip install -r onnxocr_ui/requirements.txt
+pip install -r requirements.txt
 ```
 
 ## 启动方式

@@ -15,4 +15,3 @@ opencv-python
 pymupdf
 tkinterdnd2
 Pillow
-numpy<2.0.0

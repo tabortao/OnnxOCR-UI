@@ -30,8 +30,9 @@ OnnxOCR-UI 是基于 [OnnxOCR](https://github.com/jingsongliujing/OnnxOCR) 的�
 UV可以自动处理依赖关系，非常不错。
 
 ```bash
-# 使用uv进行开发环境搭建时，由于依赖关系原因，Python 3.12不可以使用。
 # 项目python环境由3.7升级为3.8之后，OCR速度提示了很多。
+# 不同python版本，requirements.txt不同，详见docs\requirements。
+# 例如，使用Python 3.12 版本时，requirements.txt（opencv-python>=4.7.0、numpy<2.0.0、onnxruntime-gpu取消版本要求）。
 uv init OnnxOCR-UI --python 3.8 # 自动安装了3.8.20
 cd OnnxOCR-UI
 uv venv
@@ -39,7 +40,9 @@ uv venv
 uv pip install -r requirements.txt --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 uv run main.py
 
+# 如要锁定python版本及对应依赖关系，请使用pip freeze > requirements.txt
 ```
+
 
 ### 使用Micromamba
 ```bash
