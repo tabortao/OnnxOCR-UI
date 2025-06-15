@@ -139,9 +139,19 @@ class OCRLogic:
         return text
 
     def _result_to_text(self, result):
+        # 健壮性检查，防止result为空或结构异常
+        if not result or not isinstance(result, list) or not result[0] or not isinstance(result[0], list):
+            return "[未检测到内容]"
         lines = []
         for box in result[0]:
-            lines.append(box[1][0])
+            # 兼容只检测无识别内容的情况
+            if isinstance(box, list) and len(box) == 2 and isinstance(box[1], (list, tuple)) and len(box[1]) >= 1:
+                lines.append(str(box[1][0]))
+            elif isinstance(box, list) and (isinstance(box[0], (list, tuple)) or isinstance(box[0], float)):
+                # 只有检测框，无识别内容
+                lines.append("[未识别] " + str(box))
+            else:
+                lines.append(str(box))
         return "\n".join(lines)
 
     def _get_output_dir(self, file_path):
@@ -151,16 +161,27 @@ class OCRLogic:
         return out_dir
 
     def set_model(self, model_name):
-        # 根据下拉选择切换模型目录
+        import os
+        base_model_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "onnxocr", "models"))
         model_map = {
             "PP-OCRv5": "ppocrv5",
             "PP-OCRv4": "ppocrv4",
             "ch_ppocr_server_v2.0": "ch_ppocr_server_v2.0"
         }
         model_dir = model_map.get(model_name, "ppocrv5")
-        # 重新初始化模型，假设ONNXPaddleOcr支持传递模型路径
-        self.model = ONNXPaddleOcr(
+        model_path = os.path.join(base_model_dir, model_dir)
+        det_model_dir = os.path.join(model_path, "det", "det.onnx")
+        cls_model_dir = os.path.join(model_path, "cls", "cls.onnx")
+        # 所有模型统一使用ppocrv5/ppocrv5_dict.txt
+        rec_char_dict_path = os.path.join(base_model_dir, "ppocrv5", "ppocrv5_dict.txt")
+        rec_model_dir = os.path.join(model_path, "rec", "rec.onnx") if os.path.exists(os.path.join(model_path, "rec", "rec.onnx")) else None
+        ocr_kwargs = dict(
             use_angle_cls=True,
             use_gpu=False,
-            model_dir=os.path.join(os.path.dirname(__file__), "..", "onnxocr", "models", model_dir)
+            det_model_dir=det_model_dir,
+            cls_model_dir=cls_model_dir,
+            rec_char_dict_path=rec_char_dict_path
         )
+        if rec_model_dir and os.path.exists(rec_model_dir):
+            ocr_kwargs["rec_model_dir"] = rec_model_dir
+        self.model = ONNXPaddleOcr(**ocr_kwargs)
