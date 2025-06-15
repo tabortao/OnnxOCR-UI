@@ -49,6 +49,11 @@ class OCRApp:
         self.btn_max.pack(side="right", padx=2, pady=2)
         self.btn_min = ctk.CTkButton(self.title_bar, text="—", width=32, height=28, fg_color="#23272b", hover_color="#31363b", command=self._minimize, corner_radius=6, text_color="#f8f8fa")
         self.btn_min.pack(side="right", padx=(0,2), pady=2)
+        # 置顶按钮
+        self.always_on_top = True  # 默认置顶
+        self.root.attributes("-topmost", self.always_on_top) # 应用默认置顶
+        self.btn_pin = ctk.CTkButton(self.title_bar, text="📌" if self.always_on_top else "📍", width=32, height=28, fg_color="#23272b", hover_color="#31363b", command=self._toggle_always_on_top, corner_radius=6, text_color="#f8f8fa")
+        self.btn_pin.pack(side="right", padx=(0, 2), pady=2)
 
         # 左上角显示UI图标（使用CTkImage避免警告）
         try:
@@ -181,13 +186,16 @@ class OCRApp:
         files = self.root.tk.splitlist(event.data)
         valid_files = [f for f in files if f.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp', '.pdf'))]
         if valid_files:
-            self.selected_files = list(valid_files)
-            self.file_label.configure(text=f"已拖入 {len(valid_files)} 个文件")
+            # self.selected_files = list(valid_files) # 不再覆盖，而是追加
+            self.selected_files.extend(list(valid_files)) # 追加新文件
+            self.selected_files = list(dict.fromkeys(self.selected_files)) # 去重，保持顺序
+            self.file_label.configure(text=f"已选择 {len(self.selected_files)} 个文件") # 更新总数
             self.update_file_listbox()
-        else:
-            self.selected_files = []
-            self.file_label.configure(text="未选择文件")
-            self.update_file_listbox()
+        # 如果没有有效文件被拖入，则不改变现有列表和标签
+        # else:
+            # self.selected_files = []
+            # self.file_label.configure(text="未选择文件")
+            # self.update_file_listbox()
 
     def start_ocr(self):
         if not self.selected_files:
@@ -234,6 +242,11 @@ class OCRApp:
 
     def update_status(self, msg):
         self.status_var.set(msg)
+
+    def _toggle_always_on_top(self):
+        self.always_on_top = not self.always_on_top
+        self.root.attributes("-topmost", self.always_on_top)
+        self.btn_pin.configure(text="📌" if self.always_on_top else "📍") # 更新按钮文本/图标
 
     def _start_move(self, event):
         self._drag_data['x'] = event.x
