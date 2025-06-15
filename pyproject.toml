@@ -1,7 +1,7 @@
 [project]
 name = "onnxocr-ui"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.2.0"
+description = "高级批量图片/PDF OCR 识别工具"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
