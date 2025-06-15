@@ -244,18 +244,22 @@ class OCRLogic:
                     import onnxruntime as ort
                     providers = self.model.session.get_providers() if hasattr(self.model, 'session') else []
                     if not any('CUDA' in p for p in providers):
-                        msg = ("未检测到可用GPU，已自动切换为CPU推理。\n如需使用GPU，请确保已正确安装CUDA和cuDNN，并将其加入PATH环境变量。\n详细要求请参考：https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements")
-                        messagebox.showwarning("未检测到可用GPU", msg)
+                        msg = ("未检测到可用GPU，已自动切换为CPU推理。请检查CUDA/cuDNN环境配置。")
+                        if hasattr(self, 'ui_ref') and hasattr(self.ui_ref, 'update_gpu_status'):
+                            self.ui_ref.update_gpu_status(msg)
                         if hasattr(self, 'status_callback'):
                             self.status_callback("[警告] 未检测到可用GPU，已切换为CPU推理。请检查CUDA/cuDNN环境配置。")
                 except Exception:
-                    msg = ("检测GPU状态时发生异常，可能未正确安装CUDA/cuDNN或onnxruntime-gpu。\n已自动切换为CPU推理。\n请参考：https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements")
-                    messagebox.showwarning("GPU检测失败", msg)
+                    msg = ("检测GPU状态时发生异常，可能未正确安装CUDA/cuDNN或onnxruntime-gpu。已自动切换为CPU推理。")
+                    if hasattr(self, 'ui_ref') and hasattr(self.ui_ref, 'update_gpu_status'):
+                        self.ui_ref.update_gpu_status(msg)
                     if hasattr(self, 'status_callback'):
                         self.status_callback("[警告] GPU检测异常，已切换为CPU推理。请检查CUDA/cuDNN环境配置。")
         except Exception as e:
             if use_gpu:
-                messagebox.showwarning("GPU初始化失败", f"GPU初始化失败，已自动切换为CPU。\n如需使用GPU，请确保已正确安装CUDA和cuDNN。\n错误信息: {e}")
+                msg = f"GPU初始化失败，已自动切换为CPU。请检查CUDA/cuDNN环境配置。错误信息: {e}"
+                if hasattr(self, 'ui_ref') and hasattr(self.ui_ref, 'update_gpu_status'):
+                    self.ui_ref.update_gpu_status(msg)
                 if hasattr(self, 'status_callback'):
                     self.status_callback("[警告] GPU初始化失败，已切换为CPU推理。请检查CUDA/cuDNN环境配置。")
                 ocr_kwargs["use_gpu"] = False

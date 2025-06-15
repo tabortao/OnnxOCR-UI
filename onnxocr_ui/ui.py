@@ -15,6 +15,7 @@ class OCRApp:
         self.root.overrideredirect(True)  # 去除原生标题栏
         self.root.geometry("800x600") # # 修改窗口大小
         self.logic = OCRLogic(self.update_status)
+        self.logic.ui_ref = self  # 让logic.py可以回调UI方法
         self.selected_files = []
         self._drag_data = {'x': 0, 'y': 0}
         # 支持窗口拖动
@@ -351,6 +352,17 @@ class OCRApp:
         self.selected_files = []
         self.file_label.configure(text="未选择文件")
         self.update_file_listbox()
+
+    def update_gpu_status(self, msg):
+        # 在文件列表区追加一行警告信息
+        self.file_listbox.configure(state="normal")
+        content = self.file_listbox.get("1.0", "end").rstrip("\n")
+        if content:
+            content += "\n"
+        content += f"[警告] {msg}"
+        self.file_listbox.delete("1.0", "end")
+        self.file_listbox.insert("1.0", content+"\n")
+        self.file_listbox.configure(state="disabled")
 
     def run(self):
         self.root.mainloop()
