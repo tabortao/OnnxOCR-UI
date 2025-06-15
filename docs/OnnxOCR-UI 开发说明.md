@@ -60,3 +60,6 @@ micromamba activate ./runtime
 ## 运行UI
 ./runtime/python.exe onnxocr_ui/main.py
 ```
+## 项目需求
+基于app-service.py、onnxocr_ui\logic.py、onnxocr_ui\ui.py，写一个webui.py，使用uv run webui.py，可以打开对应的网页，选择或拖入一个或多个图片或PDF文件，点击按钮开始识别，识别完成后输出txt文件，支持多模型热切换。
+uv run webui.py
