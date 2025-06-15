@@ -115,8 +115,8 @@ class OCRApp:
         self.file_listbox.configure(state="disabled")
 
         # 识别按钮（选项上方）
-        self.ocr_btn = ctk.CTkButton(self.root, text="开始识别", command=self.start_ocr, fg_color="#1976d2", hover_color="#1565c0", font=("微软雅黑", 18, "bold"), text_color="#fff")
-        self.ocr_btn.pack(pady=(20, 10))
+        self.ocr_btn = ctk.CTkButton(self.root, text="开始识别", command=self.start_ocr, fg_color="#1976d2", hover_color="#1565c0", font=("微软雅黑", 20, "bold"), text_color="#fff")
+        self.ocr_btn.pack(pady=(20, 20))
 
         # 选项（识别按钮上方）
         self.options_frame = ctk.CTkFrame(self.root, fg_color="#23272b", corner_radius=8)
@@ -132,13 +132,17 @@ class OCRApp:
         self.merge_txt_cb = ctk.CTkCheckBox(self.options_frame, text="多文件合并为一个txt", variable=self.merge_txt_var, text_color="#f8f8fa", bg_color="#23272b")
         self.merge_txt_cb.pack(side="left", padx=10)
         self.output_img_var = tk.BooleanVar(value=False)
-        self.output_img_cb = ctk.CTkCheckBox(self.options_frame, text="输出处理图片(_ocr.jpg)", variable=self.output_img_var, text_color="#f8f8fa", bg_color="#23272b")
+        self.output_img_cb = ctk.CTkCheckBox(self.options_frame, text="输出处理图片", variable=self.output_img_var, text_color="#f8f8fa", bg_color="#23272b")
         self.output_img_cb.pack(side="left", padx=10)
+        # 启用GPU选项，放到输出处理图片右侧
+        self.gpu_var = tk.BooleanVar(value=False)
+        self.gpu_cb = ctk.CTkCheckBox(self.options_frame, text="启用GPU", variable=self.gpu_var, text_color="#f8f8fa", bg_color="#23272b")
+        self.gpu_cb.pack(side="left", padx=10)
 
         # 进度条（选项栏下方）
         self.progress_var = tk.DoubleVar(value=0)
         self.progress_bar = ctk.CTkProgressBar(self.root, variable=self.progress_var, width=600, height=16, fg_color="#23272b", progress_color="#1976d2", border_color="#31363b", border_width=2)
-        self.progress_bar.pack(pady=(0, 10))
+        self.progress_bar.pack(pady=(0, 20))
         self.progress_bar.set(0)
 
         # 状态栏（始终最底部，单独用pack(side='bottom')，不要被其他控件挤上去）
@@ -193,26 +197,23 @@ class OCRApp:
         self.progress_var.set(0)  # 进度条重置为0
         model_name = self.model_var.get()
         output_img = self.output_img_var.get()
-        threading.Thread(target=self._run_ocr, args=(model_name, output_img), daemon=True).start()
+        use_gpu = self.gpu_var.get()  # 新增
+        threading.Thread(target=self._run_ocr, args=(model_name, output_img, use_gpu), daemon=True).start()
 
-    def _run_ocr(self, model_name, output_img):
+    def _run_ocr(self, model_name, output_img, use_gpu):
         def file_time_callback(idx, seconds):
             self.update_file_process_time(idx, seconds)
         def pdf_progress_callback(done, total):
             if self.selected_files:
-                # 只处理当前PDF，进度条按总任务+PDF页数分配
                 pdf_idx = self.selected_files.index(self.current_pdf) if hasattr(self, 'current_pdf') else 0
                 total_files = len(self.selected_files)
-                # PDF页数进度占当前文件的进度区间
                 base = pdf_idx / total_files
                 step = 1 / total_files
                 self.progress_var.set(base + step * (done / total))
         try:
-            self.logic.set_model(model_name)
-            # 传递pdf_progress_callback
+            self.logic.set_model(model_name, use_gpu=use_gpu)  # 修正：传递use_gpu参数
             def run_with_pdf_progress(*args, **kwargs):
                 return self.logic.run(*args, pdf_progress_callback=pdf_progress_callback, **kwargs)
-            # 标记当前处理PDF
             for f in self.selected_files:
                 if f.lower().endswith('.pdf'):
                     self.current_pdf = f

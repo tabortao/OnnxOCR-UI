@@ -209,11 +209,13 @@ class OCRLogic:
         os.makedirs(out_dir, exist_ok=True)
         return out_dir
 
-    def set_model(self, model_name):
+    def set_model(self, model_name, use_gpu=False):
         """
         切换OCR模型，支持多模型热切换，所有模型统一用ppocrv5字典
+        use_gpu: 是否启用GPU
         """
         import os
+        import tkinter.messagebox as messagebox
         base_model_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "onnxocr", "models"))
         model_map = {
             "PP-OCRv5": "ppocrv5",
@@ -224,16 +226,39 @@ class OCRLogic:
         model_path = os.path.join(base_model_dir, model_dir)
         det_model_dir = os.path.join(model_path, "det", "det.onnx")
         cls_model_dir = os.path.join(model_path, "cls", "cls.onnx")
-        # 所有模型统一使用ppocrv5/ppocrv5_dict.txt
         rec_char_dict_path = os.path.join(base_model_dir, "ppocrv5", "ppocrv5_dict.txt")
         rec_model_dir = os.path.join(model_path, "rec", "rec.onnx") if os.path.exists(os.path.join(model_path, "rec", "rec.onnx")) else None
         ocr_kwargs = dict(
             use_angle_cls=True,
-            use_gpu=False,
+            use_gpu=use_gpu,  # 关键：传递GPU参数
             det_model_dir=det_model_dir,
             cls_model_dir=cls_model_dir,
             rec_char_dict_path=rec_char_dict_path
         )
         if rec_model_dir and os.path.exists(rec_model_dir):
             ocr_kwargs["rec_model_dir"] = rec_model_dir
-        self.model = ONNXPaddleOcr(**ocr_kwargs)
+        try:
+            self.model = ONNXPaddleOcr(**ocr_kwargs)
+            if use_gpu:
+                try:
+                    import onnxruntime as ort
+                    providers = self.model.session.get_providers() if hasattr(self.model, 'session') else []
+                    if not any('CUDA' in p for p in providers):
+                        msg = ("未检测到可用GPU，已自动切换为CPU推理。\n如需使用GPU，请确保已正确安装CUDA和cuDNN，并将其加入PATH环境变量。\n详细要求请参考：https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements")
+                        messagebox.showwarning("未检测到可用GPU", msg)
+                        if hasattr(self, 'status_callback'):
+                            self.status_callback("[警告] 未检测到可用GPU，已切换为CPU推理。请检查CUDA/cuDNN环境配置。")
+                except Exception:
+                    msg = ("检测GPU状态时发生异常，可能未正确安装CUDA/cuDNN或onnxruntime-gpu。\n已自动切换为CPU推理。\n请参考：https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements")
+                    messagebox.showwarning("GPU检测失败", msg)
+                    if hasattr(self, 'status_callback'):
+                        self.status_callback("[警告] GPU检测异常，已切换为CPU推理。请检查CUDA/cuDNN环境配置。")
+        except Exception as e:
+            if use_gpu:
+                messagebox.showwarning("GPU初始化失败", f"GPU初始化失败，已自动切换为CPU。\n如需使用GPU，请确保已正确安装CUDA和cuDNN。\n错误信息: {e}")
+                if hasattr(self, 'status_callback'):
+                    self.status_callback("[警告] GPU初始化失败，已切换为CPU推理。请检查CUDA/cuDNN环境配置。")
+                ocr_kwargs["use_gpu"] = False
+                self.model = ONNXPaddleOcr(**ocr_kwargs)
+            else:
+                raise
