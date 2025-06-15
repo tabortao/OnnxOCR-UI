@@ -205,7 +205,7 @@ class OCRLogic:
         获取输出目录，自动创建
         """
         base_dir = os.path.dirname(file_path)
-        out_dir = os.path.join(base_dir, "Image_Output_OCR")
+        out_dir = os.path.join(base_dir, "Output_OCR")
         os.makedirs(out_dir, exist_ok=True)
         return out_dir
 
