@@ -270,8 +270,10 @@ class OCRApp:
             work_h = rect.bottom - rect.top
             self._max_geometry = f"{work_w}x{work_h}+{rect.left}+{rect.top}"
             self.root.geometry(self._max_geometry)
+            self.progress_bar.configure(width=work_w - 80) 
         else:
             self.root.geometry(self._normal_geometry)
+            self.progress_bar.configure(width=600)
 
     def _set_cursor_default(self, event=None):
         self.root.config(cursor="arrow")
