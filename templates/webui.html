@@ -3,21 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <title>OnnxOCR Web UI</title>
-    <style>
-        body { font-family: sans-serif; background: #f8f8f8; margin: 0; }
-        .container { max-width: 800px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 32px; }
-        h2 { text-align: center; margin-bottom: 24px; }
-        .form-row { margin-bottom: 18px; }
-        .form-row label { margin-right: 10px; }
-        #fileInput { display: none; }
-        .drop-zone { border: 2px dashed #888; border-radius: 8px; padding: 32px; text-align: center; color: #555; background: #fafafa; cursor: pointer; margin-bottom: 18px; }
-        .drop-zone.dragover { background: #e0eaff; }
-        #resultArea { margin-top: 24px; }
-        .result-block { background: #f4f4f4; border-radius: 6px; padding: 12px; margin-bottom: 10px; }
-        .result-block pre { white-space: pre-wrap; word-break: break-all; }
-        #downloadBtn { margin-top: 18px; display: none; }
-        #loading { display: none; text-align: center; margin-top: 16px; }
-    </style>
+    <link rel="stylesheet" href="/static/webui.css">
 </head>
 <body>
 <div class="container">
@@ -30,19 +16,21 @@
                 <option value="PP-OCRv4">PP-OCRv4</option>
                 <option value="ch_ppocr_server_v2.0">ch_ppocr_server_v2.0</option>
             </select>
-            <button type="button" id="clearBtn" style="margin-left:16px;">清除</button>
+            <button type="button" id="clearBtn">清除</button>
         </div>
         <div class="form-row">
             <div id="dropZone" class="drop-zone">点击或拖拽图片/PDF文件到此处（可多选）</div>
             <input id="fileInput" type="file" name="files" multiple accept="image/*,.pdf" />
         </div>
         <div class="form-row">
-            <ul id="fileList" style="margin:0;padding:0 0 0 18px;color:#333;font-size:14px;"></ul>
+            <ul id="fileList"></ul>
         </div>
-        <button type="submit">开始识别</button>
+        <div class="form-row button-row">
+            <button type="submit">开始识别</button>
+        </div>
     </form>
     <div style="display:flex;justify-content:flex-end;margin-top:8px;">
-        <button id="downloadBtn" style="display:none;">下载全部TXT（压缩包）</button>
+        <button id="downloadBtn">下载全部TXT（压缩包）</button>
     </div>
     <div id="loading">正在识别，请稍候...</div>
     <div id="resultArea"></div>
@@ -111,10 +99,27 @@ ocrForm.addEventListener('submit', async function(e) {
             return;
         }
         lastZipUrl = data.zip_url;
+        // 新增：构建文件名到File对象的映射
+        const fileMap = {};
+        for (const file of fileInput.files) {
+            fileMap[file.name] = file;
+        }
         data.results.forEach(r => {
             const div = document.createElement('div');
             div.className = 'result-block';
-            div.innerHTML = `<b>${r.filename}</b><pre>${r.content}</pre>`;
+            // 判断是否为图片文件
+            const ext = r.filename.split('.').pop().toLowerCase();
+            const isImage = ['jpg','jpeg','png','bmp','gif','webp'].includes(ext);
+            let imgHtml = '';
+            if (isImage && fileMap[r.filename.replace(/\.txt$/, '') + '.' + ext]) {
+                // 兼容 txt 文件名和原图名一致的情况
+                const imgFile = fileMap[r.filename.replace(/\.txt$/, '') + '.' + ext] || fileMap[r.filename.replace(/\.txt$/, '')];
+                if (imgFile) {
+                    const url = URL.createObjectURL(imgFile);
+                    imgHtml = `<img class="ocr-image-preview" src="${url}" alt="${r.filename}">`;
+                }
+            }
+            div.innerHTML = `${imgHtml ? imgHtml : ''}<div class="ocr-text-content"><b>${r.filename}</b><pre>${r.content}</pre></div>`;
             resultArea.appendChild(div);
         });
         downloadBtn.style.display = 'inline-block';

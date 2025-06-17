@@ -73,7 +73,9 @@ micromamba activate ./runtime
 ```
 
 ## 项目需求
+### Webui需求
 参考app-service.py、onnxocr_ui\logic.py，使用flask,写一个webui.py，使用uv run webui.py，可以打开对应的网页，选择或拖入一个或多个图片或PDF文件，点击按钮开始识别，网页展示识别后的文字，并且可以下载所有压缩后识别的txt文件（每一次执行识别，新建一个时间戳文件夹，生成的txt放到里面）。支持多模型热切换。
+- 拖入图片后，开始识别按钮下方，左侧区域展示出拖入的照片，点击开始识别，识别后的文字再图片右侧展示出来。
 uv run webui.py
 uv run app-service.py
 
