@@ -9,7 +9,7 @@
 <div class="container">
     <h2>OnnxOCR Web UI</h2>
     <form id="ocrForm">
-        <div class="form-row">
+        <div class="form-row" style="justify-content: flex-start;">
             <label for="modelSelect">选择模型：</label>
             <select id="modelSelect" name="model_name">
                 <option value="PP-OCRv5">PP-OCRv5</option>
@@ -35,10 +35,10 @@
         <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
         <div id="elapsedTime"></div>
     </div>
-    <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+    <div class="download-row">
         <button id="downloadBtn">下载全部TXT（压缩包）</button>
     </div>
-    <div id="loading" style="display:none;">正在识别，请稍候...</div>
+    <div id="loading">正在识别，请稍候...</div>
     <div id="resultArea"></div>
 </div>
 <script>
