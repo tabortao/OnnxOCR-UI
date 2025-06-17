@@ -5,6 +5,7 @@ build/
 dist/
 wheels/
 Release/
+results/
 *.egg-info
 
 # Virtual environments

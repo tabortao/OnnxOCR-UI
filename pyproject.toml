@@ -4,4 +4,9 @@ version = "0.2.0"
 description = "高级批量图片/PDF OCR 识别工具"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "fastapi>=0.115.12",
+    "jinja2>=3.1.6",
+    "python-multipart>=0.0.20",
+    "uvicorn>=0.34.3",
+]

@@ -1,5 +1,10 @@
 # OnnxOCR-UI 开发说明
 
+
+## TODO
+
+20250617：有个想法，是不是可以给项目文件夹放一个uv文件，然后通过bat文件自动调用uv创建python环境并安装依赖，一个脚本搞定项目环境安装，待尝试验证。
+
 ## OnnxOCR-UI 简介
 
 OnnxOCR-UI 是基于 [OnnxOCR](https://github.com/jingsongliujing/OnnxOCR) 的高级批量图片/PDF OCR 识别工具，采用 Tkinter + customTkinter 打造，专为高效、易用和美观的桌面批量文字识别场景设计。
@@ -27,7 +32,7 @@ OnnxOCR-UI 是基于 [OnnxOCR](https://github.com/jingsongliujing/OnnxOCR) 的�
 ## 如何使用项目
 
 ### 使用UV
-UV可以自动处理依赖关系，非常不错。
+UV可以自动处理依赖关系，非常不错，项目最终使用的cp312。
 
 ```bash
 # 项目python环境由3.7升级为3.8之后，OCR速度提示了很多。
@@ -35,12 +40,18 @@ UV可以自动处理依赖关系，非常不错。
 # 例如，使用Python 3.12 版本时，requirements.txt（opencv-python>=4.7.0、numpy<2.0.0、onnxruntime-gpu取消版本要求）。
 uv init OnnxOCR-UI --python 3.8 # 自动安装了3.8.20
 cd OnnxOCR-UI
+# 从网上clone好项目，这里使用 uv venv .venv --python=3.12
 uv venv
 .venv\Scripts\activate
 uv pip install -r requirements.txt --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 uv run main.py
 
-# 如要锁定python版本及对应依赖关系，请使用pip freeze > requirements.txt
+# 如要锁定python版本及对应依赖关系，请使用
+pip freeze > requirements.txt
+# 可选，生成依赖锁定文件
+uv pip compile requirements.txt -o requirements.lock
+# 后续用锁文件安装：
+uv pip install -r requirements.lock
 ```
 
 
@@ -60,6 +71,15 @@ micromamba activate ./runtime
 ## 运行UI
 ./runtime/python.exe onnxocr_ui/main.py
 ```
+
 ## 项目需求
-基于app-service.py、onnxocr_ui\logic.py、onnxocr_ui\ui.py，写一个webui.py，使用uv run webui.py，可以打开对应的网页，选择或拖入一个或多个图片或PDF文件，点击按钮开始识别，识别完成后输出txt文件，支持多模型热切换。
+参考app-service.py、onnxocr_ui\logic.py，使用flask,写一个webui.py，使用uv run webui.py，可以打开对应的网页，选择或拖入一个或多个图片或PDF文件，点击按钮开始识别，网页展示识别后的文字，并且可以下载所有压缩后识别的txt文件（每一次执行识别，新建一个时间戳文件夹，生成的txt放到里面）。支持多模型热切换。
 uv run webui.py
+uv run app-service.py
+
+```bash
+uv add fastapi uvicorn jinja2 python-multipart
+uv remove fastapi uvicorn jinja2 python-multipart
+uv add opencv-python
+
+```

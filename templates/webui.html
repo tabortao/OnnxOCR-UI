@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <title>OnnxOCR Web UI</title>
+    <style>
+        body { font-family: sans-serif; background: #f8f8f8; margin: 0; }
+        .container { max-width: 800px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 32px; }
+        h2 { text-align: center; margin-bottom: 24px; }
+        .form-row { margin-bottom: 18px; }
+        .form-row label { margin-right: 10px; }
+        #fileInput { display: none; }
+        .drop-zone { border: 2px dashed #888; border-radius: 8px; padding: 32px; text-align: center; color: #555; background: #fafafa; cursor: pointer; margin-bottom: 18px; }
+        .drop-zone.dragover { background: #e0eaff; }
+        #resultArea { margin-top: 24px; }
+        .result-block { background: #f4f4f4; border-radius: 6px; padding: 12px; margin-bottom: 10px; }
+        .result-block pre { white-space: pre-wrap; word-break: break-all; }
+        #downloadBtn { margin-top: 18px; display: none; }
+        #loading { display: none; text-align: center; margin-top: 16px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>OnnxOCR Web UI</h2>
+    <form id="ocrForm">
+        <div class="form-row">
+            <label for="modelSelect">选择模型：</label>
+            <select id="modelSelect" name="model_name">
+                <option value="PP-OCRv5">PP-OCRv5</option>
+                <option value="PP-OCRv4">PP-OCRv4</option>
+                <option value="ch_ppocr_server_v2.0">ch_ppocr_server_v2.0</option>
+            </select>
+            <button type="button" id="clearBtn" style="margin-left:16px;">清除</button>
+        </div>
+        <div class="form-row">
+            <div id="dropZone" class="drop-zone">点击或拖拽图片/PDF文件到此处（可多选）</div>
+            <input id="fileInput" type="file" name="files" multiple accept="image/*,.pdf" />
+        </div>
+        <div class="form-row">
+            <ul id="fileList" style="margin:0;padding:0 0 0 18px;color:#333;font-size:14px;"></ul>
+        </div>
+        <button type="submit">开始识别</button>
+    </form>
+    <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+        <button id="downloadBtn" style="display:none;">下载全部TXT（压缩包）</button>
+    </div>
+    <div id="loading">正在识别，请稍候...</div>
+    <div id="resultArea"></div>
+</div>
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const ocrForm = document.getElementById('ocrForm');
+const resultArea = document.getElementById('resultArea');
+const downloadBtn = document.getElementById('downloadBtn');
+const loading = document.getElementById('loading');
+const fileList = document.getElementById('fileList');
+const clearBtn = document.getElementById('clearBtn');
+let lastZipUrl = null;
+
+function updateFileList() {
+    fileList.innerHTML = '';
+    if (fileInput.files.length === 0) {
+        fileList.innerHTML = '<li style="color:#888;">未选择文件</li>';
+        return;
+    }
+    for (const file of fileInput.files) {
+        const li = document.createElement('li');
+        li.textContent = file.name;
+        fileList.appendChild(li);
+    }
+}
+
+// 拖拽上传
+['dragenter','dragover'].forEach(evt => dropZone.addEventListener(evt, e => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+}));
+['dragleave','drop'].forEach(evt => dropZone.addEventListener(evt, e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+}));
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('drop', e => {
+    fileInput.files = e.dataTransfer.files;
+    updateFileList();
+});
+fileInput.addEventListener('change', updateFileList);
+
+ocrForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    if (!fileInput.files.length) {
+        alert('请先选择图片或PDF文件');
+        return;
+    }
+    loading.style.display = 'block';
+    resultArea.innerHTML = '';
+    downloadBtn.style.display = 'none';
+    fileList.innerHTML = '';
+    const formData = new FormData();
+    for (const file of fileInput.files) {
+        formData.append('files', file);
+    }
+    formData.append('model_name', document.getElementById('modelSelect').value);
+    try {
+        const resp = await fetch('/ocr', { method: 'POST', body: formData });
+        const data = await resp.json();
+        loading.style.display = 'none';
+        if (!data.success) {
+            resultArea.innerHTML = `<div style='color:red;'>识别失败：${data.msg || ''}</div>`;
+            return;
+        }
+        lastZipUrl = data.zip_url;
+        data.results.forEach(r => {
+            const div = document.createElement('div');
+            div.className = 'result-block';
+            div.innerHTML = `<b>${r.filename}</b><pre>${r.content}</pre>`;
+            resultArea.appendChild(div);
+        });
+        downloadBtn.style.display = 'inline-block';
+    } catch (err) {
+        loading.style.display = 'none';
+        resultArea.innerHTML = `<div style='color:red;'>请求失败：${err}</div>`;
+    }
+});
+
+downloadBtn.addEventListener('click', function() {
+    if (lastZipUrl) {
+        window.open(lastZipUrl, '_blank');
+    }
+});
+
+clearBtn.addEventListener('click', function() {
+    fileInput.value = '';
+    updateFileList();
+    resultArea.innerHTML = '';
+    downloadBtn.style.display = 'none';
+});
+</script>
+</body>
+</html>
