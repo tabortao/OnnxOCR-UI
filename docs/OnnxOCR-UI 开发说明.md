@@ -69,17 +69,23 @@ micromamba activate ./runtime
 ./runtime/python.exe app-service.py
 
 ## 运行UI
-./runtime/python.exe onnxocr_ui/main.py
+./runtime/python.exe main.py
 ```
 
 ## 项目需求
-### Webui需求
-参考app-service.py、onnxocr_ui\logic.py，使用flask,写一个webui.py，使用uv run webui.py，可以打开对应的网页，选择或拖入一个或多个图片或PDF文件，点击按钮开始识别，网页展示识别后的文字，并且可以下载所有压缩后识别的txt文件（每一次执行识别，新建一个时间戳文件夹，生成的txt放到里面）。支持多模型热切换。
+### Webui-FaskAPI
+参考app-service.py、onnxocr_ui\logic.py，写一个webui.py，使用uv run webui.py，可以打开对应的网页，选择或拖入一个或多个图片或PDF文件，点击按钮开始识别，网页展示识别后的文字，并且可以下载所有压缩后识别的txt文件（每一次执行识别，新建一个时间戳文件夹，生成的txt放到里面）。支持多模型热切换。
 - 拖入图片后，开始识别按钮下方，左侧区域展示出拖入的照片，点击开始识别，识别后的文字再图片右侧展示出来。
 
 ```bash
 # 新增了如下依赖，已添加到了requirements.txt
 uv add fastapi uvicorn jinja2 python-multipart
-# 启动web界面
+# 启动web界面 webui.py
 uvicorn webui:app --reload
+```
+### Webui-Flask
+使用flask框架来实现一个webui2.py，功能与webui.py相同，参考webui.py、templates\webui.html、static\webui.css
+```bash
+# 启动web界面
+uv run webui2.py
 ```
