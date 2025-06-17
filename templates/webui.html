@@ -29,10 +29,16 @@
             <button type="submit">开始识别</button>
         </div>
     </form>
+    <div id="previewArea"></div>
+    <div id="progressArea">
+        <div id="progressText"></div>
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
+        <div id="elapsedTime"></div>
+    </div>
     <div style="display:flex;justify-content:flex-end;margin-top:8px;">
         <button id="downloadBtn">下载全部TXT（压缩包）</button>
     </div>
-    <div id="loading">正在识别，请稍候...</div>
+    <div id="loading" style="display:none;">正在识别，请稍候...</div>
     <div id="resultArea"></div>
 </div>
 <script>
@@ -44,6 +50,10 @@ const downloadBtn = document.getElementById('downloadBtn');
 const loading = document.getElementById('loading');
 const fileList = document.getElementById('fileList');
 const clearBtn = document.getElementById('clearBtn');
+const progressArea = document.getElementById('progressArea');
+const progressBar = document.getElementById('progressBar');
+const progressText = document.getElementById('progressText');
+const elapsedTime = document.getElementById('elapsedTime');
 let lastZipUrl = null;
 
 function updateFileList() {
@@ -81,57 +91,92 @@ ocrForm.addEventListener('submit', async function(e) {
         alert('请先选择图片或PDF文件');
         return;
     }
-    loading.style.display = 'block';
+    loading.style.display = 'none'; // 立即隐藏 loading
     resultArea.innerHTML = '';
     downloadBtn.style.display = 'none';
     fileList.innerHTML = '';
+    progressArea.style.display = 'flex';
+    progressBar.style.width = '0%';
+    progressText.textContent = '正在准备识别...';
+    elapsedTime.textContent = '';
+    const startTime = Date.now();
     const formData = new FormData();
     for (const file of fileInput.files) {
         formData.append('files', file);
     }
     formData.append('model_name', document.getElementById('modelSelect').value);
+    // 保存所有图片文件的base名和File对象
+    const imageFileMap = {};
+    for (const file of fileInput.files) {
+        if (file.type.startsWith('image/')) {
+            const base = file.name.replace(/\.[^.]+$/, '');
+            imageFileMap[base] = file;
+        }
+    }
     try {
+        let fakeProgress = 0;
+        const fakeTimer = setInterval(() => {
+            if (fakeProgress < 80) {
+                fakeProgress += Math.random() * 8 + 2;
+                progressBar.style.width = Math.min(fakeProgress, 80) + '%';
+                progressText.textContent = '正在识别文件...';
+            }
+        }, 300);
         const resp = await fetch('/ocr', { method: 'POST', body: formData });
+        clearInterval(fakeTimer);
+        progressBar.style.width = '100%';
+        progressText.textContent = '识别完成';
         const data = await resp.json();
-        loading.style.display = 'none';
         if (!data.success) {
+            progressArea.style.display = 'none';
             resultArea.innerHTML = `<div style='color:red;'>识别失败：${data.msg || ''}</div>`;
+            lastZipUrl = null;
             return;
         }
-        lastZipUrl = data.zip_url;
-        // 新增：构建文件名到File对象的映射
-        const fileMap = {};
+        // 多图片多结果展示
+        previewArea.innerHTML = '';
+        resultArea.innerHTML = '';
+        // 构建图片base名到File对象的映射
+        const imgMap = {};
         for (const file of fileInput.files) {
-            fileMap[file.name] = file;
+            if (file.type.startsWith('image/')) {
+                const base = file.name.replace(/\.[^.]+$/, '');
+                imgMap[base] = file;
+            }
         }
         data.results.forEach(r => {
+            const txtBase = r.filename.replace(/\.txt$/, '');
             const div = document.createElement('div');
             div.className = 'result-block';
-            // 判断是否为图片文件
-            const ext = r.filename.split('.').pop().toLowerCase();
-            const isImage = ['jpg','jpeg','png','bmp','gif','webp'].includes(ext);
             let imgHtml = '';
-            if (isImage && fileMap[r.filename.replace(/\.txt$/, '') + '.' + ext]) {
-                // 兼容 txt 文件名和原图名一致的情况
-                const imgFile = fileMap[r.filename.replace(/\.txt$/, '') + '.' + ext] || fileMap[r.filename.replace(/\.txt$/, '')];
-                if (imgFile) {
-                    const url = URL.createObjectURL(imgFile);
-                    imgHtml = `<img class="ocr-image-preview" src="${url}" alt="${r.filename}">`;
-                }
+            if (imgMap[txtBase]) {
+                const url = URL.createObjectURL(imgMap[txtBase]);
+                imgHtml = `<img class=\"ocr-image-preview\" src=\"${url}\" alt=\"${r.filename}\">`;
             }
-            div.innerHTML = `${imgHtml ? imgHtml : ''}<div class="ocr-text-content"><b>${r.filename}</b><pre>${r.content}</pre></div>`;
+            div.innerHTML = `${imgHtml}<div class=\"ocr-text-content\"><b>${r.filename}</b><pre>${r.content}</pre></div>`;
             resultArea.appendChild(div);
         });
+        const used = ((Date.now() - startTime) / 1000).toFixed(2);
+        elapsedTime.textContent = `识别总耗时：${used} 秒`;
         downloadBtn.style.display = 'inline-block';
+        lastZipUrl = data.zip_url || null;
     } catch (err) {
-        loading.style.display = 'none';
+        progressArea.style.display = 'none';
         resultArea.innerHTML = `<div style='color:red;'>请求失败：${err}</div>`;
     }
 });
 
 downloadBtn.addEventListener('click', function() {
     if (lastZipUrl) {
-        window.open(lastZipUrl, '_blank');
+        // 采用 a 标签下载，兼容所有浏览器
+        const a = document.createElement('a');
+        a.href = lastZipUrl;
+        a.download = '';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    } else {
+        alert('未找到可下载的压缩包');
     }
 });
 
@@ -140,6 +185,11 @@ clearBtn.addEventListener('click', function() {
     updateFileList();
     resultArea.innerHTML = '';
     downloadBtn.style.display = 'none';
+    previewArea.innerHTML = '';
+    progressArea.style.display = 'none';
+    progressBar.style.width = '0%';
+    progressText.textContent = '';
+    elapsedTime.textContent = '';
 });
 </script>
 </body>
