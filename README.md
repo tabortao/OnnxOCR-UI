@@ -46,6 +46,54 @@ python main.py
     - `app_icon.ico` 界面与任务栏图标
 - `main.py`      启动入口，仅负责启动 UI
 
+## OCR API (base64 图像识别接口)
+
+### 接口地址
+
+```
+POST /ocr_api
+```
+
+### 请求格式
+Content-Type: application/json
+
+```json
+{
+  "image": "<图片的base64字符串>"
+}
+```
+
+### 返回格式
+
+```json
+{
+  "processing_time": 0.123,
+  "results": [
+    {
+      "text": "识别文本",
+      "confidence": 0.99,
+      "bounding_box": [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
+    },
+    ...
+  ]
+}
+```
+
+### Python 示例代码
+
+```python
+import requests, base64
+
+with open('test_images/1.jpg', 'rb') as f:
+    img_b64 = base64.b64encode(f.read()).decode()
+
+resp = requests.post('http://127.0.0.1:8000/ocr_api', json={"image": img_b64})
+print(resp.json())
+```
+
+- 端口号请根据实际 uvicorn 启动参数调整。
+- 返回结果为每一行文本的内容、置信度和文本框坐标。
+
 ## 其他说明
 - 支持 PyInstaller 打包，图标自动适配
 - 详细开发说明见 docs/OnnxOCR 开发说明.md
