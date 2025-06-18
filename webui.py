@@ -158,3 +158,4 @@ async def ocr_api(data: dict = Body(...)):
 
 # 你需要在 templates/webui.html 和 static/ 目录下放置前端页面和 JS，支持多文件上传、模型切换、识别、结果展示和下载。
 # 启动命令：uvicorn webui:app --reload
+# 指定端口启动：uvicorn webui:app --host 0.0.0.0 --port 5005 --reload

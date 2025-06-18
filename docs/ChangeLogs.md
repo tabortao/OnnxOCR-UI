@@ -8,6 +8,7 @@
 - webui识别后的文本新增复制按钮
 - webui.py新增ocr_api接口(FastAPI)
 - webui2.py新增ocr_api接口（Flask）
+- 统一webui.py、webui.py端口为5005
 
 ## v0.2.1(2025-06-17)
 - 新增webui
