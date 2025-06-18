@@ -89,3 +89,10 @@ uvicorn webui:app --reload
 # 启动web界面
 uv run webui2.py
 ```
+
+## 打包应用
+
+```bash
+# 使用pyinstaller打包应用
+pyinstaller --noconfirm --windowed --add-data "onnxocr;onnxocr" --add-data "onnxocr/fonts;onnxocr/fonts" --add-data "onnxocr/models;onnxocr/models" --add-data "onnxocr_ui/app_icon.ico;onnxocr_ui" --icon=onnxocr_ui/app_icon.ico --name=OnnxOCR-UI main.py
+```
