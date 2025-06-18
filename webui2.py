@@ -4,6 +4,10 @@ import zipfile
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
 from werkzeug.utils import secure_filename
 from onnxocr_ui.logic import OCRLogic
+import cv2
+import base64
+import numpy as np
+from onnxocr.onnx_paddleocr import ONNXPaddleOcr
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_ROOT = os.path.join(BASE_DIR, "uploads")
@@ -17,6 +21,8 @@ app = Flask(__name__, static_folder="static", template_folder="templates")
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200MB
 
 ocr_logic = OCRLogic(lambda msg: print(msg))
+# 独立 OCR 模型实例，避免影响 ocr_logic
+ocr_model_api = ONNXPaddleOcr(use_angle_cls=True, use_gpu=False)
 
 @app.route("/")
 def index():
@@ -90,6 +96,40 @@ def download_zip(timestamp):
     if os.path.exists(zip_path):
         return send_file(zip_path, as_attachment=True, download_name=f"ocr_txt_{timestamp}.zip")
     return jsonify({"success": False, "msg": "文件不存在"}), 404
+
+@app.route("/ocr_api", methods=["POST"])
+def ocr_api():
+    data = request.get_json()
+    if not data or "image" not in data:
+        return jsonify({"error": "Invalid request, 'image' field is required."}), 400
+    image_base64 = data["image"]
+    try:
+        image_bytes = base64.b64decode(image_base64)
+        image_np = np.frombuffer(image_bytes, dtype=np.uint8)
+        img = cv2.imdecode(image_np, cv2.IMREAD_COLOR)
+        if img is None:
+            return jsonify({"error": "Failed to decode image from base64."}), 400
+    except Exception as e:
+        return jsonify({"error": f"Image decoding failed: {str(e)}"}), 400
+    start_time = time.time()
+    result = ocr_model_api.ocr(img)
+    end_time = time.time()
+    processing_time = end_time - start_time
+    ocr_results = []
+    for line in result[0]:
+        if isinstance(line[0], (list, np.ndarray)):
+            bounding_box = np.array(line[0]).reshape(4, 2).tolist()
+        else:
+            bounding_box = []
+        ocr_results.append({
+            "text": line[1][0],
+            "confidence": float(line[1][1]),
+            "bounding_box": bounding_box
+        })
+    return jsonify({
+        "processing_time": processing_time,
+        "results": ocr_results
+    })
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=7860, debug=True)
