@@ -95,4 +95,8 @@ uv run webui2.py
 ```bash
 # 使用pyinstaller打包应用
 pyinstaller --noconfirm --windowed --add-data "onnxocr;onnxocr" --add-data "onnxocr/fonts;onnxocr/fonts" --add-data "onnxocr/models;onnxocr/models" --add-data "onnxocr_ui/app_icon.ico;onnxocr_ui" --icon=onnxocr_ui/app_icon.ico --name=OnnxOCR-UI main.py
+
+# 使用nuitka打包应用
+python -m nuitka --standalone --enable-plugin=tk-inter --include-data-dir=onnxocr=onnxocr --include-data-dir=onnxocr/fonts=onnxocr/fonts --include-data-dir=onnxocr/models=onnxocr/models --include-data-file=onnxocr_ui/app_icon.ico=onnxocr_ui/app_icon.ico --windows-icon-from-ico=onnxocr_ui/app_icon.ico --output-dir=dist --remove-output --windows-console-mode=disable --output-filename=OnnxOCR-UI main.py
+
 ```
