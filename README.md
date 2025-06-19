@@ -3,7 +3,9 @@
 ## 📖 OnnxOCR-UI 简介
 OnnxOCR-UI 是基于 [OnnxOCR](https://github.com/jingsongliujing/OnnxOCR) 的高级批量图片/PDF OCR 识别工具，采用 Tkinter + customTkinter 打造，专为高效、易用和美观的桌面批量文字识别场景设计。
 
-![OnnxOCR-UI](./docs/images/UI-20250614211544.jpg)
+![OnnxOCR-UI](./docs/images/OnnxOCR-UI.jpg)
+
+介绍文章：[基于OnnxOCR实现的批量PDF、图片OCR识别工具](https://mp.weixin.qq.com/s/vy1-I9IgwI0Q88n20P9ebw)
 
 ## ✨ 主要功能
 - 支持批量图片、PDF 文件拖拽或选择添加

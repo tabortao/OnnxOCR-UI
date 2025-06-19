@@ -21,3 +21,4 @@ fastapi
 uvicorn
 jinja2
 python-multipart
+pdf2image

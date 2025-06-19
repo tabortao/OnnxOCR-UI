@@ -39,7 +39,7 @@ DisableProgramGroupPage=yes
 OutputBaseFilename={#MyAppName}_v{#MyAppVersion}_x64-setup
 ; 输出目录
 OutputDir=F:\Code\OCR\OnnxOCR-UI\dist\Releases
-SetupIconFile=F:\Code\OCR\OnnxOCR-UI\dist\OnnxOCR-UI\_internal\onnxocr_ui\app_icon.ico
+SetupIconFile=F:\Code\OCR\OnnxOCR-UI\onnxocr_ui\app_icon.ico
 SolidCompression=yes
 WizardStyle=modern
 

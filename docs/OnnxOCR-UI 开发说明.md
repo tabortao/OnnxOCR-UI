@@ -18,7 +18,7 @@ OnnxOCR-UI 是基于 [OnnxOCR](https://github.com/jingsongliujing/OnnxOCR) 的�
 - 文件列表区显示文件名、大小、处理用时，“清除添加”按钮一键清空。
 - 代码结构清晰，UI与逻辑完全分离，便于维护和二次开发。
 
-![OnnxOCR-UI](../docs/images/UI-20250614211544.jpg)
+![OnnxOCR-UI](../docs/images/OnnxOCR-UI.jpg)
 
 ## 主要功能亮点
 - 拖拽/多选图片和PDF，批量识别
