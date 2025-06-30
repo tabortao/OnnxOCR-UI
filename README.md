@@ -74,9 +74,9 @@ Content-Type: application/json
     {
       "text": "识别文本",
       "confidence": 0.99,
-      "bounding_box": [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
+      // "bounding_box": [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
     },
-    ...
+    // ...
   ]
 }
 ```
@@ -100,6 +100,7 @@ print(resp.json())
 - 支持 PyInstaller 打包，图标自动适配
 - 详细开发说明见 docs/OnnxOCR 开发说明.md
 - 版本更新详见 docs/ChangeLogs.md
+- 关注微信公众号“可持续学园”，回复“OnnxOCR-UI”，获取编译好的最新版Windows版OnnxOCR-UI.exe。
 
 ## 🙏感谢
 - [OnnxOCR](https://github.com/jingsongliujing/OnnxOCR)

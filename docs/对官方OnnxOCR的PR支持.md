@@ -1,4 +1,18 @@
 
+20250627：
+增加一个桌面客户端UI
+- 启动桌面客户端OnnxOCR-UI，按如下步骤：
+```bash
+git clone https://github.com/jingsongliujing/OnnxOCR.git
+cd OnnxOCR
+uv venv .venv --python=3.8
+.venv\Scripts\activate
+uv pip install -r requirements.txt --index-url https://pypi.tuna.tsinghua.edu.cn/simple
+uv run main.py
+```
+- 桌面客户端OnnxOCR-UI如下图
+
+
 
 20250619:
 添加一个批处理OCR页面。
