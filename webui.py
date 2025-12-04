@@ -13,6 +13,7 @@ import base64
 import numpy as np
 from fastapi import Body
 from onnxocr.onnx_paddleocr import ONNXPaddleOcr
+import requests
 
 app = FastAPI()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -140,6 +141,54 @@ async def ocr_api(data: dict = Body(...)):
     result = ocr_model_api.ocr(img)
     end_time = time.time()
     processing_time = end_time - start_time
+    ocr_results = []
+    for line in result[0]:
+        if isinstance(line[0], (list, np.ndarray)):
+            bounding_box = np.array(line[0]).reshape(4, 2).tolist()
+        else:
+            bounding_box = []
+        ocr_results.append({
+            "text": line[1][0],
+            "confidence": float(line[1][1]),
+            "bounding_box": bounding_box
+        })
+    return JSONResponse({
+        "processing_time": processing_time,
+        "results": ocr_results
+    })
+
+@app.post("/ocr_url")
+async def ocr_url(data: dict = Body(...)):
+    """
+    接收图片链接，下载后进行 OCR 识别
+    {
+        "url": "http(s)://...",
+        "model_name": "PP-OCRv5"  // 可选
+    }
+    """
+    if not data or "url" not in data:
+        return JSONResponse({"error": "Invalid request, 'url' field is required."}, status_code=400)
+    url = data["url"]
+    model_name = data.get("model_name")
+    if model_name:
+        try:
+            ocr_logic.set_model(model_name)
+        except Exception as e:
+            return JSONResponse({"error": f"模型切换失败: {e}"}, status_code=500)
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.status_code != 200 or not resp.content:
+            return JSONResponse({"error": f"下载失败，状态码: {resp.status_code}"}, status_code=400)
+        image_np = np.frombuffer(resp.content, dtype=np.uint8)
+        img = cv2.imdecode(image_np, cv2.IMREAD_COLOR)
+        if img is None:
+            return JSONResponse({"error": "下载内容不是有效图片"}, status_code=400)
+    except Exception as e:
+        return JSONResponse({"error": f"图片下载或解码失败: {e}"}, status_code=400)
+
+    start_time = time.time()
+    result = ocr_model_api.ocr(img)
+    processing_time = time.time() - start_time
     ocr_results = []
     for line in result[0]:
         if isinstance(line[0], (list, np.ndarray)):

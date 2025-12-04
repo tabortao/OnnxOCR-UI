@@ -12,6 +12,7 @@ lmdb
 tqdm
 opencv-python
 pymupdf
+requests
 Pillow
 numpy<2.0.0
 fastapi
@@ -19,3 +20,4 @@ uvicorn
 jinja2
 python-multipart
 pdf2image
+aiofiles

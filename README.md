@@ -1,13 +1,16 @@
 # 🚀 OnnxOCR-UI
 
 ## 📖 OnnxOCR-UI 简介
-OnnxOCR-UI 是基于 [OnnxOCR](https://github.com/jingsongliujing/OnnxOCR) 的高级批量图片/PDF OCR 识别工具，采用 Tkinter + customTkinter 打造，专为高效、易用和美观的桌面批量文字识别场景设计。
+
+OnnxOCR-UI 是基于 [OnnxOCR](https://github.com/jingsongliujing/OnnxOCR) 的高级批量图片/PDF OCR 识别工具，采用支持 Web、Windows、Linux、Macos 的 python 程序。 打造，专为高效、易用和美观的批量文字识别场景设计。
 
 ![OnnxOCR-UI](./docs/images/OnnxOCR-UI.jpg)
+![OnnxOCR-UI](./docs/images/WebUI-01.jpg)
 
-介绍文章：[基于OnnxOCR实现的批量PDF、图片OCR识别工具](https://mp.weixin.qq.com/s/vy1-I9IgwI0Q88n20P9ebw)
+介绍文章：[基于 OnnxOCR 实现的批量 PDF、图片 OCR 识别工具](https://mp.weixin.qq.com/s/vy1-I9IgwI0Q88n20P9ebw)
 
 ## ✨ 主要功能
+
 - 支持批量图片、PDF 文件拖拽或选择添加
 - PDF 转图片采用 pymupdf，无需 poppler
 - 识别结果可分别输出 txt 或合并为一个 txt，文件名自动带时间戳
@@ -17,11 +20,12 @@ OnnxOCR-UI 是基于 [OnnxOCR](https://github.com/jingsongliujing/OnnxOCR) 的�
 - 文件列表区显示文件名、大小、处理用时
 - “清除添加”按钮可一键清空已选文件
 - 支持模型选择（PP-OCRv5、PP-OCRv4、ch_ppocr_server_v2.0），可热切换
-- 可选是否输出处理图片(_ocr.jpg)
-- 进度条实时显示整体进度，PDF按页数动态更新
+- 可选是否输出处理图片(\_ocr.jpg)
+- 进度条实时显示整体进度，PDF 按页数动态更新
 - 多图识别时状态栏提示平均速度
 
 ## 🛠️ 依赖环境
+
 - Python 3.7
 - customtkinter
 - tkinterdnd2
@@ -30,6 +34,7 @@ OnnxOCR-UI 是基于 [OnnxOCR](https://github.com/jingsongliujing/OnnxOCR) 的�
 - pymupdf
 
 安装依赖：
+
 ```
 pip install -r requirements.txt
 ```
@@ -40,23 +45,48 @@ pip install -r requirements.txt
 python main.py
 ```
 
+## Docker 部署
+
+- 使用现有 `Dockerfile` 构建本地镜像并运行：
+
+```bash
+docker build -t onnxocr-web .
+docker run -p 5005:5005 onnxocr-web
+```
+
+- 使用 docker-compose 启动（示例）：
+
+```yaml
+version: "3.8"
+services:
+  onnxocr-web:
+    image: tabortoa/onnxocr-ui:latest
+    ports:
+      - "5005:5005"
+    restart: unless-stopped
+```
+
+启动后，访问 `http://localhost:5005/` 即可使用 Web UI。
+
 ## 目录结构
-- `onnxocr_ui`   项目目录   
-    - `ui.py`        UI 界面与交互逻辑
-    - `logic.py`     OCR 识别与文件处理逻辑
-    - `requirements.txt`  依赖包列表
-    - `app_icon.ico` 界面与任务栏图标
-- `main.py`      启动入口，仅负责启动 UI
 
-## OCR API (base64 图像识别接口)
+- `onnxocr_ui` 项目目录
+  - `ui.py` UI 界面与交互逻辑
+  - `logic.py` OCR 识别与文件处理逻辑
+  - `requirements.txt` 依赖包列表
+  - `app_icon.ico` 界面与任务栏图标
+- `main.py` 启动入口，仅负责启动 UI
 
-### 接口地址
+## OCR API
+
+### 1) Base64 图像识别
 
 ```
 POST /ocr_api
 ```
 
 ### 请求格式
+
 Content-Type: application/json
 
 ```json
@@ -73,10 +103,8 @@ Content-Type: application/json
   "results": [
     {
       "text": "识别文本",
-      "confidence": 0.99,
-      // "bounding_box": [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
-    },
-    // ...
+      "confidence": 0.99
+    }
   ]
 }
 ```
@@ -96,11 +124,50 @@ print(resp.json())
 - 端口号请根据实际 uvicorn 启动参数调整。
 - 返回结果为每一行文本的内容、置信度和文本框坐标。
 
+### 2) 图片链接识别
+
+```
+POST /ocr_url
+```
+
+请求格式（JSON）：
+
+```json
+{
+  "url": "https://example.com/path/to/image.jpg",
+  "model_name": "PP-OCRv5"
+}
+```
+
+返回格式与 `/ocr_api` 相同。
+
+示例（curl）：
+
+```bash
+curl -X POST 'http://127.0.0.1:5005/ocr_url' \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"https://example.com/path/to/image.jpg"}'
+```
+
+示例（Python）：
+
+```python
+import requests
+
+resp = requests.post('http://127.0.0.1:5005/ocr_url', json={
+  'url': 'https://example.com/path/to/image.jpg',
+  'model_name': 'PP-OCRv5'
+})
+print(resp.json())
+```
+
 ## 其他说明
+
 - 支持 PyInstaller 打包，图标自动适配
 - 详细开发说明见 docs/OnnxOCR 开发说明.md
 - 版本更新详见 docs/ChangeLogs.md
-- 关注微信公众号“可持续学园”，回复“OnnxOCR-UI”，获取编译好的最新版Windows版OnnxOCR-UI.exe。
+- 关注微信公众号“可持续学园”，回复“OnnxOCR-UI”，获取编译好的最新版 Windows 版 OnnxOCR-UI.exe。
 
-## 🙏感谢
+## 🙏 感谢
+
 - [OnnxOCR](https://github.com/jingsongliujing/OnnxOCR)
