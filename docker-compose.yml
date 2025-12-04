@@ -1,0 +1,7 @@
+services:
+  onnxocr:
+    image: tabortoa/onnxocr-ui:v0.1.1
+    container_name: onnxocr-ui
+    ports:
+      - "25003:5005"
+    restart: unless-stopped

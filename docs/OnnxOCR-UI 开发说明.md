@@ -38,7 +38,7 @@ UV可以自动处理依赖关系，非常不错，项目最终使用的cp312。
 # 项目python环境由3.7升级为3.8之后，OCR速度提示了很多。
 # 不同python版本，requirements.txt不同，详见docs\requirements。
 # 例如，使用Python 3.12 版本时，requirements.txt（opencv-python>=4.7.0、numpy<2.0.0、onnxruntime-gpu取消版本要求）。
-uv init OnnxOCR-UI --python 3.8 # 自动安装了3.8.20
+uv init OnnxOCR-UI --python 3.12 # 自动安装了3.12.10
 cd OnnxOCR-UI
 # 从网上clone好项目，这里使用 uv venv .venv --python=3.12
 uv venv
@@ -87,7 +87,7 @@ uvicorn webui:app --reload
 使用flask框架来实现一个webui2.py，功能与webui.py相同，参考webui.py、templates\webui.html、static\webui.css
 ```bash
 # 启动web界面
-uv run webui2.py
+uv run webui.py
 ```
 
 ## 打包应用

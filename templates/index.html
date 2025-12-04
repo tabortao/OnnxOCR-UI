@@ -2,268 +2,244 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8" />
-    <title>OCR</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body, html {
-            height: 100%;
-            font-family: sans-serif;
-            background-color: #ffffff;
-        }
-
-        .container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            padding: 5px 20px 20px 20px;
-        }
-
-        .drop-zone {
-            border: 2px dashed #888;
-            border-radius: 10px;
-            width: 400px;
-            height: 150px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            color: #555;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            margin-bottom: 20px;
-        }
-
-        .drop-zone.dragover {
-            background-color: #f0f0f0;
-        }
-
-        .canvas-container {
-            display: none;
-            gap: 20px;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-top: 20px;
-        }
-
-        canvas {
-            border: 1px solid #ccc;
-            max-width: 600px;
-            height: auto;
-        }
-
-        /* 加载动画 */
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.7);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            display: none;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid #ccc;
-            border-top: 5px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+    <title>OnnxOCR Web UI</title>
+    <link rel="stylesheet" href="/static/webui.css">
 </head>
 <body>
-
 <div class="container">
-    <h2>OCR</h2>
-    <div id="dropZone" class="drop-zone">
-        点击或拖动图片到这里上传
+    <h2>OnnxOCR Web UI</h2>
+    <form id="ocrForm">
+        <div class="form-row" style="justify-content: flex-start;">
+            <label for="modelSelect">选择模型：</label>
+            <select id="modelSelect" name="model_name">
+                <option value="PP-OCRv5">PP-OCRv5</option>
+                <option value="PP-OCRv4">PP-OCRv4</option>
+                <option value="ch_ppocr_server_v2.0">ch_ppocr_server_v2.0</option>
+            </select>
+            <button type="button" id="clearBtn">清除</button>
+        </div>
+        <div class="form-row">
+            <div id="dropZone" class="drop-zone">点击或拖拽图片/PDF文件到此处（可多选）</div>
+            <input id="fileInput" type="file" name="files" multiple accept="image/*,.pdf" />
+        </div>
+        <div class="form-row">
+            <ul id="fileList"></ul>
+        </div>
+        <div class="form-row button-row">
+            <button type="submit">开始识别</button>
+        </div>
+    </form>
+    <div id="previewArea"></div>
+    <div id="progressArea">
+        <div id="progressText"></div>
+        <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
+        <div id="elapsedTime"></div>
     </div>
-
-    <!-- 加载动画 -->
-    <div id="loadingOverlay" class="loading-overlay">
-        <div class="spinner"></div>
+    <div class="download-row">
+        <button id="downloadBtn">下载全部TXT（压缩包）</button>
     </div>
-
-    <!-- 结果区域 -->
-    <div id="canvasContainer" class="canvas-container">
-        <canvas id="canvasOriginal"></canvas>
-        <canvas id="canvasTextOnly"></canvas>
-    </div>
+    <div id="loading">正在识别，请稍候...</div>
+    <div id="resultArea"></div>
 </div>
-
+<div id="globalTip" style="display:none;position:fixed;top:32px;right:32px;z-index:9999;min-width:120px;padding:12px 28px;background:#7b8cff;color:#fff;border-radius:8px;box-shadow:0 2px 8px #7b8cff22;font-size:1.08rem;transition:opacity 0.3s;opacity:0;"></div>
 <script>
-    const dropZone = document.getElementById('dropZone');
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const ocrForm = document.getElementById('ocrForm');
+const resultArea = document.getElementById('resultArea');
+const downloadBtn = document.getElementById('downloadBtn');
+const loading = document.getElementById('loading');
+const fileList = document.getElementById('fileList');
+const clearBtn = document.getElementById('clearBtn');
+const progressArea = document.getElementById('progressArea');
+const progressBar = document.getElementById('progressBar');
+const progressText = document.getElementById('progressText');
+const elapsedTime = document.getElementById('elapsedTime');
+let lastZipUrl = null;
 
-    const MAX_DISPLAY_WIDTH = 500;
-
-    const canvasOriginal = document.getElementById('canvasOriginal');
-    const ctxOriginal = canvasOriginal.getContext('2d');
-
-    const canvasTextOnly = document.getElementById('canvasTextOnly');
-    const ctxTextOnly = canvasTextOnly.getContext('2d');
-
-    const canvasContainer = document.getElementById('canvasContainer');
-    const loadingOverlay = document.getElementById('loadingOverlay');
-
-    // 点击上传
-    dropZone.addEventListener('click', () => {
-        fileInput.click();
-    });
-
-    // 拖拽上传
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.classList.add('dragover');
-    });
-
-    dropZone.addEventListener('dragleave', () => {
-        dropZone.classList.remove('dragover');
-    });
-
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-        const file = e.dataTransfer.files[0];
-        if (file && file.type.startsWith('image/')) {
-            handleImage(file);
-        } else {
-            alert("请上传图片文件");
-        }
-    });
-
-    fileInput.addEventListener('change', () => {
-        const file = fileInput.files[0];
-        if (file) {
-            handleImage(file);
-        }
-    });
-
-    function handleImage(file) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            const img = new Image();
-            img.onload = function () {
-                const scale = MAX_DISPLAY_WIDTH / img.width;
-                const displayWidth = img.width * scale;
-                const displayHeight = img.height * scale;
-
-                // 设置 canvas 尺寸
-                canvasOriginal.width = displayWidth;
-                canvasOriginal.height = displayHeight;
-                canvasTextOnly.width = displayWidth;
-                canvasTextOnly.height = displayHeight;
-
-                // 清除之前的绘图
-                ctxOriginal.clearRect(0, 0, displayWidth, displayHeight);
-                ctxTextOnly.clearRect(0, 0, displayWidth, displayHeight);
-
-                // 绘制原始图像
-                ctxOriginal.drawImage(img, 0, 0, displayWidth, displayHeight);
-
-                // 显示 canvas 容器
-                canvasContainer.style.display = "flex";
-
-                // 显示加载动画
-                loadingOverlay.style.display = "flex";
-
-                const base64Image = e.target.result.split(',')[1];
-                sendToOCR(base64Image, img.width, img.height, displayWidth, displayHeight);
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
+function updateFileList() {
+    fileList.innerHTML = '';
+    if (fileInput.files.length === 0) {
+        fileList.innerHTML = '<li style="color:#888;">未选择文件</li>';
+        return;
     }
-
-    function sendToOCR(base64Image, originalWidth, originalHeight, displayWidth, displayHeight) {
-        fetch('/ocr', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ image: base64Image })
-        })
-            .then(res => res.json())
-            .then(data => {
-                drawBoxesAndTextWithOrientation(data.results, originalWidth, originalHeight, displayWidth, displayHeight);
-                // 隐藏加载动画
-                loadingOverlay.style.display = "none";
-            })
-            .catch(err => {
-                console.error("OCR 调用失败", err);
-                alert("OCR 识别失败，请查看控制台日志");
-                loadingOverlay.style.display = "none";
-            });
+    for (const file of fileInput.files) {
+        const li = document.createElement('li');
+        li.textContent = file.name;
+        fileList.appendChild(li);
     }
+}
 
-    function drawBoxesAndTextWithOrientation(results, originalWidth, originalHeight, displayWidth, displayHeight) {
-        ctxTextOnly.clearRect(0, 0, canvasTextOnly.width, canvasTextOnly.height);
-        ctxTextOnly.font = "12px sans-serif";
-        ctxTextOnly.fillStyle = "black";
+// 拖拽上传
+['dragenter','dragover'].forEach(evt => dropZone.addEventListener(evt, e => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+}));
+['dragleave','drop'].forEach(evt => dropZone.addEventListener(evt, e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+}));
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('drop', e => {
+    fileInput.files = e.dataTransfer.files;
+    updateFileList();
+});
+fileInput.addEventListener('change', updateFileList);
 
-        const scaleX = displayWidth / originalWidth;
-        const scaleY = displayHeight / originalHeight;
-
-        results.forEach(result => {
-            const box = result.bounding_box.map(([x, y]) => [
-                x * scaleX,
-                y * scaleY
-            ]);
-
-            const [[x1, y1], [x2, y2], [x3, y3]] = box;
-
-            const width = Math.abs(x2 - x1);
-            const height = Math.abs(y3 - y1);
-
-            const decodedText = decodeUnicode(result.text);
-
-            // 判断方向：宽 < 高 → 竖排
-            if (width < height && height > 10) {
-                drawVerticalText(ctxTextOnly, decodedText, x1, y1, height);
-            } else {
-                ctxTextOnly.fillText(decodedText, x1, y1 + height / 2);
+ocrForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    if (!fileInput.files.length) {
+        alert('请先选择图片或PDF文件');
+        return;
+    }
+    loading.style.display = 'none'; // 立即隐藏 loading
+    resultArea.innerHTML = '';
+    downloadBtn.style.display = 'none';
+    fileList.innerHTML = '';
+    progressArea.style.display = 'flex';
+    progressBar.style.width = '0%';
+    progressText.textContent = '正在准备识别...';
+    elapsedTime.textContent = '';
+    const startTime = Date.now();
+    const formData = new FormData();
+    for (const file of fileInput.files) {
+        formData.append('files', file);
+    }
+    formData.append('model_name', document.getElementById('modelSelect').value);
+    // 保存所有图片文件的base名和File对象
+    const imageFileMap = {};
+    for (const file of fileInput.files) {
+        if (file.type.startsWith('image/')) {
+            const base = file.name.replace(/\.[^.]+$/, '');
+            imageFileMap[base] = file;
+        }
+    }
+    try {
+        let fakeProgress = 0;
+        const fakeTimer = setInterval(() => {
+            if (fakeProgress < 80) {
+                fakeProgress += Math.random() * 8 + 2;
+                progressBar.style.width = Math.min(fakeProgress, 80) + '%';
+                progressText.textContent = '正在识别文件...';
             }
-
-            // 绘制左侧红色框
-            ctxOriginal.strokeStyle = "red";
-            ctxOriginal.lineWidth = 1;
-            ctxOriginal.strokeRect(x1, y1, width, height);
-        });
-    }
-
-    // 竖排文字绘制函数
-    function drawVerticalText(ctx, text, x, y, height) {
-        for (let i = 0; i < text.length; i++) {
-            ctx.fillText(text[i], x, y + i * 14);
+        }, 300);
+        const resp = await fetch('/ocr', { method: 'POST', body: formData });
+        clearInterval(fakeTimer);
+        progressBar.style.width = '100%';
+        progressText.textContent = '识别完成';
+        const data = await resp.json();
+        if (!data.success) {
+            progressArea.style.display = 'none';
+            resultArea.innerHTML = `<div style='color:red;'>识别失败：${data.msg || ''}</div>`;
+            lastZipUrl = null;
+            return;
         }
-    }
-
-    // Unicode 解码函数
-    function decodeUnicode(str) {
-        return str.replace(/\\u([0-9a-fA-F]{4})/g, function (_, hex) {
-            return String.fromCharCode(parseInt(hex, 16));
+        // 多图片多结果展示
+        previewArea.innerHTML = '';
+        resultArea.innerHTML = '';
+        // 构建图片base名到File对象的映射
+        const imgMap = {};
+        for (const file of fileInput.files) {
+            if (file.type.startsWith('image/')) {
+                const base = file.name.replace(/\.[^.]+$/, '');
+                imgMap[base] = file;
+            }
+        }
+        data.results.forEach(r => {
+            const txtBase = r.filename.replace(/\.txt$/, '');
+            const div = document.createElement('div');
+            div.className = 'result-block';
+            let imgHtml = '';
+            if (imgMap[txtBase]) {
+                const url = URL.createObjectURL(imgMap[txtBase]);
+                imgHtml = `<img class=\"ocr-image-preview\" src=\"${url}\" alt=\"${r.filename}\">`;
+            }
+            // 新增复制按钮
+            const copyBtnHtml = `<button class=\"copy-btn\" title=\"复制文本\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 20 20\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><rect x=\"5\" y=\"5\" width=\"10\" height=\"12\" rx=\"2\" fill=\"#7b8cff\"/><rect x=\"3\" y=\"3\" width=\"10\" height=\"12\" rx=\"2\" stroke=\"#7b8cff\" stroke-width=\"1.5\" fill=\"none\"/></svg></button>`;
+            div.innerHTML = `${imgHtml}<div class=\"ocr-text-content\"><div style=\"display:flex;justify-content:space-between;align-items:flex-start;\"><b>${r.filename}</b>${copyBtnHtml}</div><pre>${r.content}</pre></div>`;
+            resultArea.appendChild(div);
         });
+        // 事件委托绑定复制按钮点击事件
+        resultArea.addEventListener('click', function(e) {
+            if (e.target.closest('.copy-btn')) {
+                const btn = e.target.closest('.copy-btn');
+                const pre = btn.closest('.ocr-text-content').querySelector('pre');
+                if (pre) {
+                    navigator.clipboard.writeText(pre.textContent).then(() => {
+                        showTip('复制成功');
+                    }).catch(() => {
+                        showTip('复制失败，请手动复制', '#f87171');
+                    });
+                }
+            }
+        });
+        const used = ((Date.now() - startTime) / 1000).toFixed(2);
+        elapsedTime.textContent = `识别总耗时：${used} 秒`;
+        downloadBtn.style.display = 'inline-block';
+        lastZipUrl = data.zip_url || null;
+    } catch (err) {
+        progressArea.style.display = 'none';
+        resultArea.innerHTML = `<div style='color:red;'>请求失败：${err}</div>`;
     }
-</script>
+});
 
+downloadBtn.addEventListener('click', function() {
+    if (lastZipUrl) {
+        // 采用 a 标签下载，兼容所有浏览器
+        const a = document.createElement('a');
+        a.href = lastZipUrl;
+        a.download = '';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    } else {
+        alert('未找到可下载的压缩包');
+    }
+});
+
+clearBtn.addEventListener('click', function() {
+    fileInput.value = '';
+    updateFileList();
+    resultArea.innerHTML = '';
+    downloadBtn.style.display = 'none';
+    previewArea.innerHTML = '';
+    progressArea.style.display = 'none';
+    progressBar.style.width = '0%';
+    progressText.textContent = '';
+    elapsedTime.textContent = '';
+});
+
+function showTip(msg, color = '#7b8cff') {
+    const tip = document.getElementById('globalTip');
+    tip.textContent = msg;
+    tip.style.background = color;
+    tip.style.display = 'block';
+    tip.style.opacity = '1';
+    clearTimeout(tip._timer);
+    tip._timer = setTimeout(() => {
+        tip.style.opacity = '0';
+        setTimeout(() => { tip.style.display = 'none'; }, 400);
+    }, 1500);
+}
+
+// 复制按钮事件绑定
+setTimeout(() => {
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.onclick = function(e) {
+            const pre = btn.closest('.ocr-text-content').querySelector('pre');
+            if (pre) {
+                navigator.clipboard.writeText(pre.textContent).then(() => {
+                    btn.title = '已复制!';
+                    btn.style.background = '#e0eaff';
+                    setTimeout(() => {
+                        btn.title = '复制文本';
+                        btn.style.background = '';
+                    }, 1200);
+                });
+            }
+        };
+    });
+}, 100);
+</script>
 </body>
 </html>

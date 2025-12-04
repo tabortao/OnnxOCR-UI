@@ -36,7 +36,7 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse("webui.html", {"request": request, "model_options": MODEL_OPTIONS})
+    return templates.TemplateResponse("index.html", {"request": request, "model_options": MODEL_OPTIONS})
 
 # 友好404页面
 @app.exception_handler(404)
