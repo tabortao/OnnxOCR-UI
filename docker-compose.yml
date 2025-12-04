@@ -1,6 +1,6 @@
 services:
   onnxocr:
-    image: tabortoa/onnxocr-ui:v0.1.1
+    image: tabortoa/onnxocr-ui:latest
     container_name: onnxocr-ui
     ports:
       - "25003:5005"
