@@ -192,7 +192,8 @@ class OCRLogic:
         for box in result[0]:
             # 兼容只检测无识别内容的情况
             if isinstance(box, list) and len(box) == 2 and isinstance(box[1], (list, tuple)) and len(box[1]) >= 1:
-                lines.append(str(box[1][0]))
+                # 去除多余空格
+                lines.append(" ".join(str(box[1][0]).split()))
             elif isinstance(box, list) and (isinstance(box[0], (list, tuple)) or isinstance(box[0], float)):
                 # 只有检测框，无识别内容
                 lines.append("[未识别] " + str(box))

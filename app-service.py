@@ -48,8 +48,9 @@ async def ocr_api(data: dict = Body(...)):
                 bounding_box = np.array(line[0]).reshape(4, 2).tolist()
             else:
                 bounding_box = []
+            cleaned_text = " ".join(str(line[1][0]).split())
             ocr_results.append({
-                "text": line[1][0],
+                "text": cleaned_text,
                 "confidence": float(line[1][1]),
                 "bounding_box": bounding_box
             })

@@ -161,6 +161,28 @@ resp = requests.post('http://127.0.0.1:5005/ocr_url', json={
 print(resp.json())
 ```
 
+### 3) 路径直连识别（纯文本返回）
+
+无需 POST，可直接在站点后附加图片 URL 进行识别，返回 `text/plain`：
+
+```
+GET /r/{img_url:path}
+```
+
+示例：
+
+```
+http://127.0.0.1:5005/r/https://example.com/path/to/image.jpg
+```
+
+可选参数用于切换模型：
+
+```
+http://127.0.0.1:5005/r/https://example.com/path/to/image.jpg?model_name=PP-OCRv5
+```
+
+返回为每行一条识别文本，文本已去除多余空格，适合在浏览器中快速查看识别结果。
+
 ## 其他说明
 
 - 支持 PyInstaller 打包，图标自动适配

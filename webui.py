@@ -14,6 +14,7 @@ import numpy as np
 from fastapi import Body
 from onnxocr.onnx_paddleocr import ONNXPaddleOcr
 import requests
+import re
 
 app = FastAPI()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -38,6 +39,10 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request, "model_options": MODEL_OPTIONS})
+
+@app.get("/ocr", response_class=HTMLResponse)
+async def ocr_page(request: Request):
+    return templates.TemplateResponse("ocr.html", {"request": request})
 
 # 友好404页面
 @app.exception_handler(404)
@@ -147,8 +152,10 @@ async def ocr_api(data: dict = Body(...)):
             bounding_box = np.array(line[0]).reshape(4, 2).tolist()
         else:
             bounding_box = []
+        # 去除多余空格
+        cleaned_text = " ".join(str(line[1][0]).split())
         ocr_results.append({
-            "text": line[1][0],
+            "text": cleaned_text,
             "confidence": float(line[1][1]),
             "bounding_box": bounding_box
         })
@@ -195,8 +202,9 @@ async def ocr_url(data: dict = Body(...)):
             bounding_box = np.array(line[0]).reshape(4, 2).tolist()
         else:
             bounding_box = []
+        cleaned_text = " ".join(str(line[1][0]).split())
         ocr_results.append({
-            "text": line[1][0],
+            "text": cleaned_text,
             "confidence": float(line[1][1]),
             "bounding_box": bounding_box
         })
@@ -204,6 +212,38 @@ async def ocr_url(data: dict = Body(...)):
         "processing_time": processing_time,
         "results": ocr_results
     })
+
+@app.get("/r/{img_url:path}")
+async def ocr_by_url_path(img_url: str, model_name: str = None):
+    """
+    直接在站点后面加图片链接路径进行识别，例如：
+    http://127.0.0.1:5005/r/https://example.com/a.jpg
+    可选参数：model_name=PP-OCRv5
+    返回纯文本，每行一个识别结果，去除多余空格。
+    """
+    if model_name:
+        try:
+            ocr_logic.set_model(model_name)
+        except Exception as e:
+            return JSONResponse({"error": f"模型切换失败: {e}"}, status_code=500)
+    try:
+        resp = requests.get(img_url, timeout=10)
+        if resp.status_code != 200 or not resp.content:
+            return JSONResponse({"error": f"下载失败，状态码: {resp.status_code}"}, status_code=400)
+        image_np = np.frombuffer(resp.content, dtype=np.uint8)
+        img = cv2.imdecode(image_np, cv2.IMREAD_COLOR)
+        if img is None:
+            return JSONResponse({"error": "下载内容不是有效图片"}, status_code=400)
+    except Exception as e:
+        return JSONResponse({"error": f"图片下载或解码失败: {e}"}, status_code=400)
+
+    result = ocr_model_api.ocr(img)
+    lines = []
+    for line in result[0]:
+        text = " ".join(str(line[1][0]).split())
+        if text:
+            lines.append(text)
+    return HTMLResponse("\n".join(lines), media_type="text/plain")
 
 # 你需要在 templates/webui.html 和 static/ 目录下放置前端页面和 JS，支持多文件上传、模型切换、识别、结果展示和下载。
 # 启动命令：uvicorn webui:app --reload
